@@ -174,7 +174,7 @@ flowchart LR
 ├─ .htaccess
 ├─ symptom_model_nb_v1.json           # model artifact (repo-provided)
 ├─ train_symptom_nb.py                # training script (repo-provided)
-├─ sehatsethu.sql / criticall.sql     # DB schema (name may vary in repo)
+├─ criticall.sql                      # DB schema
 └─ README.md
 ```
 
@@ -183,8 +183,6 @@ flowchart LR
 ---
 
 ## Backend API Structure
-
-Below is the backend structure you shared (deduplicated and formatted for README). This is the authoritative list of backend modules/endpoints in this repo.
 
 ```text
 api/
@@ -291,8 +289,6 @@ api/
 - **Composer** (for backend dependencies)
 - **MySQL** (for backend DB)
 
-> If the repo pins specific versions via Gradle wrapper or Composer constraints, follow those.
-
 ---
 
 ### Android Setup
@@ -310,31 +306,17 @@ Open in Android Studio:
 
 ### Backend Setup
 
-From repo root:
-
 ```bash
 cd api
-```
-
-Install PHP dependencies (if `vendor/` is not committed or you want to refresh):
-
-```bash
 composer install
-```
-
-Run backend locally using PHP built-in server (for quick dev only):
-
-```bash
 php -S 127.0.0.1:8080 -t .
 ```
 
-Health check (path depends on server routing; `api/health.php` exists):
+Health check:
 
 ```bash
 curl http://127.0.0.1:8080/health.php
 ```
-
-> **Assumption:** `health.php` is directly reachable at the server docroot. If you host the backend at `/api`, adjust to `/api/health.php`.
 
 ---
 
@@ -364,41 +346,17 @@ This repo uses PHP config files rather than a strict `.env` contract. Use the ta
 
 #### Android (CLI)
 
-Debug APK:
 ```bash
 ./gradlew :app:assembleDebug
-```
-
-Install to a connected device:
-```bash
 ./gradlew :app:installDebug
-```
-
-Release:
-```bash
-./gradlew :app:assembleRelease
-./gradlew :app:bundleRelease
-```
-
-Tests (if present):
-```bash
 ./gradlew test
 ```
 
 #### Backend (local)
 
-Composer install:
 ```bash
 composer install
-```
-
-PHP built-in server:
-```bash
 php -S 127.0.0.1:8080 -t api
-```
-
-Smoke test:
-```bash
 curl http://127.0.0.1:8080/health.php
 ```
 
@@ -406,132 +364,71 @@ curl http://127.0.0.1:8080/health.php
 
 ## Configuration
 
-- **Android**
-  - `app/build.gradle`: dependencies, build types, BuildConfig fields, signing.
-  - `AndroidManifest.xml`: permissions and activity declarations.
-  - `res/values*/`: translations and themes.
-
-- **Backend**
-  - `api/config.php`: database and shared config (repo file).
-  - `api/helpers.php`: common helper functions (repo file).
-  - `api/mailer.php`: email sending (repo file) with templates in `api/templates/`.
-  - `.htaccess`: routing/security rules for Apache hosting.
-
-- **Jitsi (optional)**
-  - `jitsi/docker-jitsi-meet` and `jitsi-meet-cfg` indicate Docker-based self-hosting scaffolding.
+- `api/config.php`: DB + shared backend config
+- `api/helpers.php`: backend helpers
+- `api/mailer.php` + `api/templates/*`: email OTP and reset templates
+- `.htaccess`: Apache routing/security (if deployed on Apache)
+- `jitsi/*`: optional Jitsi self-hosting artifacts
 
 ---
 
 ## Deployment
 
 ### Android
-- Build an **AAB** for Play Store:
+
 ```bash
 ./gradlew :app:bundleRelease
 ```
-- Keep signing keys out of VCS and use CI secrets or local secure storage.
 
 ### Backend (PHP)
-- Deploy the repo to an Apache/Nginx PHP host (shared hosting or VPS).
-- Ensure:
-  - PHP 8.x
-  - Composer dependencies installed
-  - MySQL reachable
-  - `uploads/` writable by the web server user (if file uploads are used)
-  - `.htaccess` enabled (Apache) or equivalent Nginx rules configured
 
-**Database**
+- Install dependencies:
+```bash
+composer install --no-dev --optimize-autoloader
+```
+
 - Import schema:
 ```bash
 mysql -u <user> -p <database> < criticall.sql
 ```
-> Schema filename may be `sehatsethu.sql` or `criticall.sql` depending on your repo.
 
-### Jitsi (optional)
-- If you self-host Jitsi, use the docker artifacts under `jitsi/`.
-- Keep Jitsi deployment isolated from API secrets (separate env files and access controls).
+- Ensure `uploads/` is writable (if using uploads).
 
 ---
 
 ## Monitoring & Logging
 
-- **Android:** Logcat for local debugging; consider adding crash reporting only if configured in repo.
-- **Backend:** PHP error logs via your web server; log request IDs for support/debug (recommended).
-- **Cron:** `api/cron/appointment_reminders.php` should be scheduled via system cron or hosting scheduler.
-
-> If you add telemetry later (OpenTelemetry/Firebase/etc.), document the exact service, endpoints, and dashboards here.
+- Android: Logcat for local debugging
+- Backend: web server + PHP error logs
+- Cron: schedule `api/cron/appointment_reminders.php` via system cron/scheduler
 
 ---
 
 ## Security Notes
 
-- **Never commit secrets:** DB passwords, SMTP passwords, Razorpay secrets, keystores.
-- **Payments:** keep Razorpay signature verification server-side; Android uses publishable key only.
-- **RBAC:** client-side role gating improves UX; enforce authorization on backend endpoints.
-- **Uploads:** validate file type/size and store outside webroot when possible; restrict direct listing.
-- **Rate limiting:** OTP and auth endpoints should be rate-limited (server / WAF).
+- Do not commit secrets (DB, SMTP, Razorpay secret, keystore).
+- Keep Razorpay verification server-side.
+- Enforce authorization server-side on all role endpoints.
+- Validate uploads (type/size) and lock down direct access where possible.
 
 ---
 
 ## Troubleshooting
 
-1) **Backend returns 500**
-- Check PHP error logs.
-- Verify DB credentials in `api/config.php`.
-- Run:
-```bash
-composer install
-```
-
-2) **CORS / base URL mismatch**
-- Ensure Android `API_BASE_URL` matches deployed API path (`/api/`).
-- Confirm `api/health.php` is reachable.
-
-3) **OTP emails not sent**
-- Verify SMTP config in `api/mailer.php`.
-- Check firewall/hosting restrictions on outbound SMTP.
-
-4) **Uploads failing**
-- Ensure `uploads/` exists and is writable by the web server user.
-- Confirm file size limits in `php.ini` (`upload_max_filesize`, `post_max_size`).
-
-5) **Cron not running**
-- Schedule `api/cron/appointment_reminders.php` in server cron:
-```bash
-php /path/to/api/cron/appointment_reminders.php
-```
-
-6) **Android build issues**
-- Ensure Android Studio uses JDK 17.
-- Clean + rebuild:
-```bash
-./gradlew clean
-./gradlew :app:assembleDebug
-```
+- **500 errors**: check PHP logs and `api/config.php` DB credentials, run `composer install`
+- **Upload issues**: check `uploads/` permissions + `php.ini` limits
+- **Android build issues**: use JDK 17, run `./gradlew clean`
+- **Health check fails**: verify docroot and `health.php` path
 
 ---
 
 ## Contributing
 
-1) Fork and branch:
 ```bash
 git checkout -b feat/<short-name>
-```
-
-2) Keep PRs small and reviewable.
-- Include screenshots for UI changes.
-- Include endpoint notes for backend changes.
-
-3) Run checks:
-```bash
 ./gradlew test
 ./gradlew :app:assembleDebug
-```
-
-Backend sanity check:
-```bash
 composer install
-php -S 127.0.0.1:8080 -t api
 ```
 
 ---
