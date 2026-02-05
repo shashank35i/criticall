@@ -1,209 +1,428 @@
 # CritiCall (Android)
 
-CritiCall is a multi-role healthcare Android application with dedicated experiences for Patient, Doctor, Pharmacist, and Admin (with optional Lab Technician workflows where enabled). It supports multilingual UI, appointment booking with payments, consultations, role-specific dashboards, realtime operations, and an in-app AI assistant layer including agentic workflows that can guide and execute multi-step flows inside the app (with explicit user confirmation for irreversible actions).
+Multi-role healthcare Android app with dedicated experiences for **Patient**, **Doctor**, **Pharmacist**, and **Admin**. Includes multilingual UI, appointment booking with payments, consultation handoff flows, role-specific dashboards, and an in-app assistant layer with guided multi-step workflows (with explicit confirmation for irreversible actions).
+
+<div align="center">
+
+![Platform](https://img.shields.io/badge/platform-Android-informational)
+![Build](https://img.shields.io/badge/build-Gradle-informational)
+![Language](https://img.shields.io/badge/language-Java%20%7C%20Kotlin-informational)
+![Status](https://img.shields.io/badge/status-active-success)
+[![License](https://img.shields.io/badge/license-SEE%20LICENSE-lightgrey)](LICENSE)
+
+</div>
+
+> **Assumption:** This repository is a Gradle-based Android Studio project rooted at `app/` and contains a `LICENSE` file at repo root. Update badges if your repo includes CI workflows (e.g., GitHub Actions) or an explicit license type.
 
 ---
 
 ## Table of Contents
 
-- Overview
-- Roles and Core Features
-- Agentic AI (In-App Orchestrator)
-- AI Assistant
-- Calls and Consultations
-- Payments
-- Localization
-- Backend / API
-- Project Structure
-- Build and Run
-- Configuration
-- Data and ML Engineering Notes
-- Security Notes
-- License
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Install](#install)
+  - [Environment Variables](#environment-variables)
+  - [Run / Build / Test](#run--build--test)
+- [Configuration](#configuration)
+- [Deployment](#deployment)
+- [Monitoring & Logging](#monitoring--logging)
+- [Security Notes](#security-notes)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
 ## Overview
 
-CritiCall is designed around three product goals:
+CritiCall is designed around four role-specific experiences:
 
-1. Workflow automation (agentic UX)
-   - Reduce steps and time-to-complete for common tasks (booking, follow-ups, record navigation)
-2. Prediction and triage support (non-diagnostic)
-   - Provide safe, low-latency guidance and structured next steps without inventing facts
-3. Monitoring and reliability
-   - Maintain stability and observability for critical user journeys
+- **Patient:** onboarding, multilingual UI, doctor discovery, appointment booking, payments, records, and notifications.
+- **Doctor:** upcoming consults, patient record review, prescription creation, and post-consult workflows.
+- **Pharmacist:** inventory workflows, stock updates, and request handling.
+- **Admin:** approval/governance workflows and operational oversight.
 
-Success is measured via completion rate, drop-off rate, time-to-complete, assistant satisfaction, latency, crash-free sessions, and API error rates.
+The app includes an in-app **assistant UI** (assistant bar + expandable sheet) and an optional **guided workflow mode** that can help users complete multi-step flows (e.g., booking) while requiring explicit confirmation for irreversible actions (like initiating payment).
+
+Success is measured via:
+- booking completion rate + time-to-complete,
+- crash-free sessions,
+- API error rate + latency on critical screens,
+- payment success rate and reconciliation correctness.
 
 ---
 
-## Roles and Core Features
+## Features
+
+### Core (Role-based)
+- Patient, Doctor, Pharmacist, Admin role flows with dedicated screens and navigation.
+- Appointment lifecycle: discovery → slot selection → payment handoff → confirmation → consult launch.
+- Role-aware dashboards (upcoming items, quick actions, notifications).
 
 ### Patient
-1. Onboarding, login, language selection
-2. Profile setup for new accounts
-   - enter personal details
-   - optionally upload previous records (PDF/images) or skip
-3. Home dashboard with quick actions and upcoming appointments
-4. Doctor discovery by specialty, doctor list, and doctor details
-5. Appointment booking: select specialty → doctor → slot → payment → confirmation
-6. Appointment details and consultation start
-7. Medical records: prescriptions, vitals, visit history
-8. Notifications and profile management
-9. AI Assistant access (assistant bar + expandable sheet)
-10. Emergency call shortcut
+- Onboarding + login + language selection.
+- Profile setup for new accounts with optional medical record upload (PDF/images) or skip.
+- Doctor discovery by specialty and doctor detail views.
+- Appointments: booking, details, start consultation, follow-up navigation.
+- Medical records: prescriptions, vitals, visit history.
+- Notifications and profile management.
+- Emergency call shortcut (if present in UI/workflow).
 
 ### Doctor
-1. Doctor home with upcoming appointments and quick start
-2. Consultations list (all/upcoming/completed)
-3. Patient records review
-4. Prescription creation and save to patient record
-5. Notifications and profile management
-6. Consultation start flow
-   - external call launch (video/audio)
-   - return to app triggers handoff to next workflow screen (patient summary or doctor prescription)
+- Consultations list (upcoming/completed).
+- Patient record review and summaries.
+- Prescription creation and save to patient record.
+- Consultation start flow and post-call workflow screen.
 
 ### Pharmacist
-1. Pharmacy home dashboard
-2. Stock overview, low-stock alerts, and requests
-3. Add medicine, update stock, and search
-4. Notifications and profile management
-5. Call/dial actions for requests
+- Stock overview, low-stock awareness (if present), and updates.
+- Add medicine/update stock/search inventory.
+- Requests processing and contact/dial actions (if present).
 
 ### Admin
-1. Admin dashboard
-2. User verification workflows and approvals
-3. Governance workflows (role onboarding, approvals)
-4. Admin profile and support
+- Approval workflows (e.g., doctor/pharmacist verification if implemented).
+- Governance and operational workflows tied to role onboarding.
 
-### Lab Technician (optional / module-based)
-1. Lab order inbox and tracking (Firebase-enabled flows where configured)
-2. Structured lab parameter entry
-3. Critical value detection and critical notifications pipeline
+### Integrations
+- **Razorpay** payment handoff (via `PaymentActivity`).
+- Video/audio consult via external meeting links; fallback to Jitsi using `JITSI_BASE_URL` (where configured).
 
----
-
-## Agentic AI (In-App Orchestrator)
-
-CritiCall includes an in-app “agentic” assistant mode that can plan and execute multi-step app workflows through app-owned interfaces. This is not background automation; it operates within the app UI with explicit user confirmations for irreversible actions (e.g., payment initiation).
-
-### What It Can Do
-- Appointment booking workflow
-  - specialty selection → doctor selection → slot selection → payment handoff → booking confirmation
-- Follow-up workflow navigation
-  - open appointment details → show next action → guide completion
-- Records navigation
-  - open medical records → filter prescriptions/vitals/history → summarize or surface next steps
-- Role-aware actions
-  - constrained to user role permissions (patient/doctor/pharmacist/admin)
-
-### Guardrails
-- Always ask for confirmation before committing:
-  - payment initiation
-  - appointment submission
-  - any irreversible write action
-- Never invent medical facts or lab values
-- Provide safe fallback to guided steps when automation cannot proceed
-
-### Recommended Architecture (Implementation Guidance)
-- Intent layer: map user requests into canonical intents (book_appointment, find_doctor, open_records, etc.)
-- Planner: create minimal deterministic action plan (navigation + form fills + API calls)
-- Executor: executes actions through controlled interfaces (navigation controller, screen contracts, validators)
-- Verifier: checks post-conditions (appointment created, payment status)
-- Fallback: guided steps if execution fails or context is missing
+### Assistant
+- Assistant bar UI with expandable assistant sheet.
+- Multilingual responses aligned to app-selected language.
+- Voice input support (if enabled by permissions/config).
 
 ---
 
-## AI Assistant
+## Architecture
 
-The assistant is available to patients and provides:
-- short non-diagnostic guidance
-- multilingual responses aligned to selected app language
-- assistant bar UI that expands into a full assistant sheet
-- voice input support
-- offline fallback responder for precautionary guidance
+```mermaid
+flowchart LR
+  U[User\nPatient/Doctor/Pharmacist/Admin] --> APP[Android App\nCritiCall]
 
-### Model and Inference
-This project supports on-device and server-assisted inference patterns depending on build configuration:
+  subgraph ANDROID[Android App]
+    NAV[Role Navigation\nRole modules + guarded routes]
+    UI[Role Screens\nPatient/Doctor/Pharmacist/Admin]
+    ASST[Assistant UI\nBar + Sheet]
+    ORCH[Guided Workflow Mode\nIntent → Plan → Execute → Verify]
+    NET[Network Layer\nApiConfig + clients]
+    PAY[Payments\nRazorpay activity]
+    CALLS[Calls\nExternal link + Jitsi fallback]
+    I18N[Localization\nResources + preferences]
+  end
 
-- On-device inference: TensorFlow Lite (recommended for offline + low latency)
-- Server-assisted inference: optional via backend if configured
+  APP --> NAV
+  NAV --> UI
+  APP --> ASST
+  ASST --> ORCH
+  UI --> NET
+  PAY --> NET
+  CALLS --> NET
 
-Design constraints:
-- low latency
-- concise outputs
-- safety constraints enforced by deterministic checks
-- strict separation between training data and runtime user data to avoid leakage
+  NET --> API[Backend API\nPHP (configured)]
+  API --> DB[(MySQL)]
+  PAY --> RZP[Razorpay]
+  CALLS --> VC[Video/Audio Provider\nMeet link or Jitsi]
+  DB --- SQL[Schema file\nsehatsethu.sql / criticall.sql]
+```
 
----
-
-## Calls and Consultations
-
-1. Video/audio consults open external call links
-2. If a meet link is not provided by the API, the app falls back to a Jitsi URL built from `JITSI_BASE_URL` and a room derived from the appointment public code
-3. After the call returns, the app shows the next workflow screen (patient summary or doctor prescription)
-
----
-
-## Payments
-
-Payment flow uses Razorpay in `PaymentActivity`.
-- booking flows route through Razorpay checkout
-- confirmation updates appointment state and downstream workflows
-
----
-
-## Localization
-
-The UI supports:
-- English
-- Hindi
-- Tamil
-- Telugu
-- Kannada
-- Malayalam
-
-Language selection is persisted and applied across screens and assistant responses.
+### Component Notes
+- **Role modules:** isolate domain UI/workflows per role; reduces cross-role coupling.
+- **Network layer:** central place for base URL, clients, and error handling.
+- **Payments:** booking flows route through Razorpay checkout then update appointment state.
+- **Calls:** open external consult links; build a Jitsi room URL when API does not provide a link.
+- **Assistant + workflow mode:** UI + optional orchestrator that guides multi-step flows with guardrails.
 
 ---
 
-## Backend / API
+## Tech Stack
 
-The app expects a PHP backend. The base URL is configured in:
-- `app/src/main/java/com/simats/criticall/ApiConfig.kt`
-
-Database schema / procedures are in:
-- `sehatsethu.sql`
+- **Mobile:** Android (Java/Kotlin), Gradle, AndroidX / Material (as used in the project)
+- **Backend (expected):** PHP API (base URL configured in app)
+- **Database:** MySQL (schema included in repo)
+- **Payments:** Razorpay
+- **Calls:** external meet link + Jitsi fallback (`JITSI_BASE_URL`)
+- **Localization:** Android resources (`res/values-*`) + persisted language preference
 
 ---
 
 ## Project Structure
 
 ```text
-criticall/
+.
 ├─ app/
-│  ├─ src/
-│  │  ├─ main/
-│  │  │  ├─ AndroidManifest.xml
-│  │  │  ├─ java/
-│  │  │  │  └─ com/simats/criticall/
-│  │  │  │     ├─ assistant/                 # assistant bar, bottom sheet, orchestration hooks
-│  │  │  │     ├─ network/                   # API config, clients, request/response utils
-│  │  │  │     ├─ utils/                     # translation, preferences, helpers
-│  │  │  │     ├─ roles/
-│  │  │  │     │  ├─ patient/                # onboarding, booking, records, patient dashboard
-│  │  │  │     │  ├─ doctor/                 # consultations, patient records, prescriptions
-│  │  │  │     │  ├─ pharmacist/             # inventory, requests, alerts
-│  │  │  │     │  └─ admin/                  # approvals, governance
-│  │  │  │     └─ (optional) labtech/        # lab inbox, parameter entry, critical alerts
-│  │  │  └─ res/
-│  │  │     ├─ layout/
-│  │  │     ├─ drawable/
-│  │  │     └─ values/                       # localized strings (multi-language)
+│  ├─ src/main/
+│  │  ├─ AndroidManifest.xml
+│  │  ├─ java/com/simats/criticall/
+│  │  │  ├─ assistant/              # assistant bar + assistant sheet + workflow hooks (if present)
+│  │  │  ├─ network/                # ApiConfig, clients, request/response utils
+│  │  │  ├─ roles/
+│  │  │  │  ├─ patient/             # onboarding, booking, records, patient dashboard
+│  │  │  │  ├─ doctor/              # consultations, patient review, prescriptions
+│  │  │  │  ├─ pharmacist/          # inventory, requests
+│  │  │  │  └─ admin/               # approvals/governance
+│  │  │  └─ utils/                  # translation, preferences, helpers
+│  │  └─ res/
+│  │     ├─ layout/
+│  │     ├─ drawable/
+│  │     └─ values*/                # localized strings
 │  └─ build.gradle
-├─ criticall.sql
-├─ gradle/
 ├─ build.gradle
 ├─ settings.gradle
+├─ gradle/
+├─ sehatsethu.sql                   # DB schema (repo-provided)
 └─ README.md
+```
+
+> **Assumption:** Package name is `com.simats.criticall` and role modules exist under `roles/`. Adjust paths to match your repo.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Android Studio** (recent stable)
+- **JDK 17** (recommended for modern Android Gradle Plugin)
+- **Android SDK** with an emulator or physical device
+- Optional: access to the backend API and Razorpay test configuration if you want end-to-end booking + payment
+
+> If your repo pins Gradle/AGP versions, follow what’s in `gradle-wrapper.properties` and top-level `build.gradle`.
+
+### Install
+
+```bash
+git clone <REPO_URL>
+cd criticall
+```
+
+Open in Android Studio:
+- **File → Open…** → select the repo root
+- Let **Gradle Sync** finish
+
+### Environment Variables
+
+If the repo contains an `.env.example`, mirror it here. Otherwise, these keys are inferred from typical usage in this project.
+
+| Variable | Required | Used by | Example | Notes |
+|---|:---:|---|---|---|
+| `API_BASE_URL` | ✅ | Network (`ApiConfig.kt`) | `https://api.example.com/` | Base URL for the PHP backend. |
+| `JITSI_BASE_URL` | ⛔ | Calls fallback | `https://meet.jit.si/` | Used only if API doesn’t return a meeting link. |
+| `RAZORPAY_KEY_ID` | ✅* | Payments | `rzp_test_...` | Publishable key ID for Razorpay checkout. |
+| `RAZORPAY_KEY_SECRET` | ✅* (server) | Backend | *(server-side)* | **Do not** put secrets in the Android app. |
+
+\* Required only if you run booking flows that trigger payments.
+
+#### Recommended local setup (no secrets committed)
+
+Use `local.properties` (not committed) and map to `BuildConfig`:
+
+`local.properties`:
+```properties
+API_BASE_URL=https://api.example.com/
+JITSI_BASE_URL=https://meet.jit.si/
+RAZORPAY_KEY_ID=rzp_test_xxxxx
+```
+
+`app/build.gradle` (example):
+```gradle
+android {
+  defaultConfig {
+    def apiBaseUrl = project.properties["API_BASE_URL"] ?: ""
+    def jitsiBaseUrl = project.properties["JITSI_BASE_URL"] ?: ""
+    def razorpayKeyId = project.properties["RAZORPAY_KEY_ID"] ?: ""
+
+    buildConfigField "String", "API_BASE_URL", "\"${apiBaseUrl}\""
+    buildConfigField "String", "JITSI_BASE_URL", "\"${jitsiBaseUrl}\""
+    buildConfigField "String", "RAZORPAY_KEY_ID", "\"${razorpayKeyId}\""
+  }
+}
+```
+
+Then reference `BuildConfig.API_BASE_URL` / `BuildConfig.JITSI_BASE_URL` / `BuildConfig.RAZORPAY_KEY_ID` from code.
+
+---
+
+### Run / Build / Test
+
+#### Run (Android Studio)
+- Select a device/emulator
+- Run the **app** configuration
+
+#### Build (CLI)
+
+Debug APK:
+```bash
+./gradlew :app:assembleDebug
+```
+
+Install to a connected device:
+```bash
+./gradlew :app:installDebug
+```
+
+Release APK:
+```bash
+./gradlew :app:assembleRelease
+```
+
+Release AAB (recommended for Play Store):
+```bash
+./gradlew :app:bundleRelease
+```
+
+Tests (if present):
+```bash
+./gradlew test
+```
+
+Instrumentation tests (if configured):
+```bash
+./gradlew connectedAndroidTest
+```
+
+> Tip: run `./gradlew tasks` to see exactly what this repo exposes.
+
+---
+
+## Configuration
+
+Common configuration touchpoints:
+
+- `app/build.gradle`
+  - dependencies, build types (debug/release), BuildConfig fields, signing.
+- `gradle/wrapper/gradle-wrapper.properties`
+  - Gradle version pinning.
+- `app/src/main/AndroidManifest.xml`
+  - permissions (internet, audio, etc.), activity declarations, deep links.
+- `app/src/main/res/values*/`
+  - localized strings and theme resources.
+
+Backend integration:
+- Base URL configured in `app/src/main/java/.../network/ApiConfig.kt` (or equivalent).
+- Schema file at repo root: `sehatsethu.sql` (and/or `criticall.sql`).
+
+---
+
+## Deployment
+
+### Android release artifacts
+
+```bash
+./gradlew :app:assembleRelease
+./gradlew :app:bundleRelease
+```
+
+### Environment separation
+
+- Use different API endpoints per environment (dev/staging/prod) via BuildConfig fields.
+- Keep secrets server-side:
+  - Razorpay secret key must be used only on the backend for order creation and signature verification.
+- Never commit:
+  - keystores, signing passwords, production keys, `.jks` files, `local.properties`.
+
+---
+
+## Monitoring & Logging
+
+- Local debugging:
+  - Use **Logcat** filtered by `com.simats.criticall`.
+- Production recommendations (only if present / enabled in repo):
+  - crash reporting and performance telemetry
+  - structured logging with PII redaction
+  - release build gating (telemetry enabled in release, optional in debug)
+
+> If this repo includes telemetry SDK config, document the exact setup here (service name, env, where dashboards live).
+
+---
+
+## Security Notes
+
+- **RBAC:** role enforcement must be server-side. Client-side checks are UX, not security.
+- **Secrets:** do not store any secret keys in the Android app (especially payment secrets).
+- **Transport:** use HTTPS for all API calls.
+- **PII:** avoid logging patient identifiers, medical details, or tokens.
+- **File uploads:** validate file type/size on backend; store with access controls.
+
+---
+
+## Troubleshooting
+
+1) **Gradle sync fails (JDK mismatch)**
+- In Android Studio: Settings → Build Tools → Gradle → set **Gradle JDK = 17**.
+- Verify:
+```bash
+./gradlew -version
+```
+
+2) **Network calls failing / 404 / timeout**
+- Confirm `API_BASE_URL` is set and reachable:
+```bash
+curl -I https://api.example.com/
+```
+
+3) **Cleartext HTTP blocked**
+- Use HTTPS. For local dev only, configure a Network Security Config and keep it out of release.
+
+4) **Payment flow errors**
+- Ensure `RAZORPAY_KEY_ID` is configured.
+- Ensure backend creates Razorpay orders and verifies signatures (server-side).
+- Update WebView/Play Services on emulator/device.
+
+5) **Consult link not opening**
+- Validate the meet link returned by the API.
+- If using fallback, ensure `JITSI_BASE_URL` is set and room names are URL-safe.
+
+6) **Build succeeds, install fails**
+```bash
+adb devices
+adb uninstall com.simats.criticall
+./gradlew :app:installDebug
+```
+
+7) **Manifest merge conflicts**
+```bash
+./gradlew :app:processDebugManifest --stacktrace
+```
+
+8) **Missing resources / duplicate classes**
+- Clean + rebuild:
+```bash
+./gradlew clean
+./gradlew :app:assembleDebug
+```
+
+---
+
+## Contributing
+
+1) Fork the repo and create a branch:
+```bash
+git checkout -b feat/<short-name>
+```
+
+2) Keep PRs small and reviewable.
+- Include screenshots for UI changes.
+- Describe how to validate the change.
+
+3) Run checks locally:
+```bash
+./gradlew test
+./gradlew :app:assembleDebug
+```
+
+Code style guidelines:
+- Keep role logic isolated under `roles/`.
+- Centralize API calls in the network layer.
+- Avoid hard-coded secrets and environment URLs.
+
+---
+
+## License
+
+See [LICENSE](LICENSE).
