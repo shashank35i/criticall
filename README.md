@@ -101,23 +101,23 @@ Success is measured via:
 
 ```mermaid
 flowchart LR
-  U[Users\nPatient/Doctor/Pharmacist/Admin] --> AND[Android App\nCritiCall]
-  AND -->|HTTPS JSON| API[PHP Backend\n/api/*]
+  U["Users<br/>Patient / Doctor / Pharmacist / Admin"] --> AND["Android App<br/>CritiCall"]
+  AND -->|HTTPS JSON| API["PHP Backend API<br/>/api/*"]
   API --> DB[(MySQL)]
-  API --> MAIL[Email\nOTP/Reset]
-  AND --> PAY[Razorpay Checkout]
-  AND --> VC[Consultation Link\nMeet/Jitsi]
+  API --> MAIL["Email (OTP/Reset)"]
+  AND --> PAY["Razorpay Checkout"]
+  AND --> VC["Consultation Link<br/>Meet / Jitsi"]
 
-  subgraph Backend[PHP Backend]
-    AUTH[api/auth/*]
-    PROF[api/profile/*]
-    PAT[api/patient/*]
-    DOC[api/doctor/*]
-    PHAR[api/pharmacist/*]
-    ADM[api/admin/*]
-    NOTI[api/notifications/*]
-    CRON[api/cron/*]
-    TPL[api/templates/*]
+  subgraph BE["Backend Modules"]
+    AUTH["api/auth/*"]
+    PROF["api/profile/*"]
+    PAT["api/patient/*"]
+    DOC["api/doctor/*"]
+    PHAR["api/pharmacist/*"]
+    ADM["api/admin/*"]
+    NOTI["api/notifications/*"]
+    CRON["api/cron/*"]
+    TPL["api/templates/*"]
   end
 
   API --- AUTH
@@ -130,7 +130,7 @@ flowchart LR
   API --- CRON
   API --- TPL
 
-  VC --- JITSI[(Optional self-hosted Jitsi\njitsi/*)]
+  VC --- JITSI["Optional self-hosted Jitsi<br/>jitsi/*"]
 ```
 
 ### Component Notes
