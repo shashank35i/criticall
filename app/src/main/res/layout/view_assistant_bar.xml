@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/assistantBar"
+    android:layout_width="match_parent"
+    android:layout_height="280dp"
+    android:layout_marginStart="1dp"
+    android:layout_marginEnd="1dp"
+    android:layout_marginBottom="14dp"
+    app:cardCornerRadius="28dp"
+    app:cardElevation="12dp"
+    app:cardUseCompatPadding="true"
+    app:cardBackgroundColor="#0B0F18"
+    android:background="@drawable/bg_assistant_panel">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
+
+        <ImageView
+            android:id="@+id/ivSparkle"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ai"
+            android:contentDescription="@string/ai_assistant"
+            app:tint="#C7CEDB"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvGreeting"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Good morning"
+            android:textColor="#B7C0CF"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintStart_toEndOf="@id/ivSparkle"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnExpand" />
+
+        <ImageButton
+            android:id="@+id/btnExpand"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_assistant_expand_button"
+            android:contentDescription="Expand"
+            android:src="@drawable/ic_expand_24"
+            android:tint="#B7C0CF"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvAsk"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Ask Assistant"
+            android:textColor="#E9EEF8"
+            android:textSize="28sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvGreeting"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardControls"
+            android:layout_width="0dp"
+            android:layout_height="64dp"
+            android:layout_marginTop="18dp"
+            app:cardCornerRadius="32dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="@android:color/transparent"
+            android:background="@drawable/bg_assistant_pill"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/controlsInner"
+            android:layout_width="0dp"
+            android:layout_height="64dp"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            app:layout_constraintStart_toStartOf="@id/cardControls"
+            app:layout_constraintEnd_toEndOf="@id/cardControls"
+            app:layout_constraintTop_toTopOf="@id/cardControls"
+            app:layout_constraintBottom_toBottomOf="@id/cardControls">
+
+            <ImageButton
+                android:id="@+id/btnMic"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_assistant_icon_ripple"
+                android:contentDescription="Microphone"
+                android:src="@drawable/ic_mic_24"
+                android:tint="#E9EEF8"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+
+            <ImageButton
+                android:id="@+id/btnCamera"
+                android:layout_width="36dp"
+                android:visibility="invisible"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_assistant_icon_ripple"
+                android:contentDescription="Camera"
+                android:src="@drawable/ic_camera"
+                android:tint="#E9EEF8"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>

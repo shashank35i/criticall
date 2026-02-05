@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_assistant">എഐ അസിസ്റ്റന്റ്</string>
+    <string name="ai_assistant_sub">ലക്ഷണങ്ങൾ, മുൻകരുതലുകൾ അല്ലെങ്കിൽ അടുത്ത നടപടികൾ കുറിച്ച് ചോദിക്കുക.</string>
+    <string name="ask_assistant">അസിസ്റ്റന്റിനോട് ചോദിക്കുക</string>
+    <string name="view_prescriptions_reports">പ്രിസ്ക്രിപ്ഷനും റിപ്പോർട്ടുകളും കാണുക</string>
+</resources>
