@@ -202,7 +202,7 @@ criticall/
 │  │  │     ├─ drawable/
 │  │  │     └─ values/                       # localized strings (multi-language)
 │  └─ build.gradle
-├─ sehatsethu.sql
+├─ criticall.sql
 ├─ gradle/
 ├─ build.gradle
 ├─ settings.gradle
