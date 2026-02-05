@@ -1,18 +1,21 @@
-# CritiCall (Android)
+# CritiCall (Android + PHP Backend)
 
-Multi-role healthcare Android app with dedicated experiences for **Patient**, **Doctor**, **Pharmacist**, and **Admin**. Includes multilingual UI, appointment booking with payments, consultation handoff flows, role-specific dashboards, and an in-app assistant layer with guided multi-step workflows (with explicit confirmation for irreversible actions).
+Multi-role healthcare platform with an **Android client** and a **PHP backend API** supporting **Patient**, **Doctor**, **Pharmacist**, and **Admin** workflows. Includes multilingual UI, appointment booking with payments, consultation handoff flows, role dashboards, notifications, and an in-app assistant layer with guided multi-step workflows (with explicit confirmation for irreversible actions).
 
 <div align="center">
 
-![Platform](https://img.shields.io/badge/platform-Android-informational)
-![Build](https://img.shields.io/badge/build-Gradle-informational)
-![Language](https://img.shields.io/badge/language-Java%20%7C%20Kotlin-informational)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20PHP-informational)
+![Build](https://img.shields.io/badge/build-Gradle%20%7C%20Composer-informational)
+![Language](https://img.shields.io/badge/language-Java%20%7C%20Kotlin%20%7C%20PHP-informational)
 ![Status](https://img.shields.io/badge/status-active-success)
 [![License](https://img.shields.io/badge/license-SEE%20LICENSE-lightgrey)](LICENSE)
 
 </div>
 
-> **Assumption:** This repository is a Gradle-based Android Studio project rooted at `app/` and contains a `LICENSE` file at repo root. Update badges if your repo includes CI workflows (e.g., GitHub Actions) or an explicit license type.
+> **Assumptions (repo-driven):**
+> - Android app lives under `app/` and uses Gradle.
+> - Backend is a PHP codebase rooted at `api/` with Composer dependencies (`composer.json`, `vendor/`).
+> - Jitsi self-hosting artifacts exist under `jitsi/` (Docker-based).
 
 ---
 
@@ -23,9 +26,11 @@ Multi-role healthcare Android app with dedicated experiences for **Patient**, **
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
+- [Backend API Structure](#backend-api-structure)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
-  - [Install](#install)
+  - [Android Setup](#android-setup)
+  - [Backend Setup](#backend-setup)
   - [Environment Variables](#environment-variables)
   - [Run / Build / Test](#run--build--test)
 - [Configuration](#configuration)
@@ -40,62 +45,55 @@ Multi-role healthcare Android app with dedicated experiences for **Patient**, **
 
 ## Overview
 
-CritiCall is designed around four role-specific experiences:
+CritiCall is split into two primary layers:
 
-- **Patient:** onboarding, multilingual UI, doctor discovery, appointment booking, payments, records, and notifications.
-- **Doctor:** upcoming consults, patient record review, prescription creation, and post-consult workflows.
-- **Pharmacist:** inventory workflows, stock updates, and request handling.
-- **Admin:** approval/governance workflows and operational oversight.
+- **Android client**: role-specific UX for Patient, Doctor, Pharmacist, and Admin, plus assistant UI and guided workflows.
+- **PHP backend API**: a foldered, role-based set of endpoints under `api/` that powers auth, profiles, appointments, notifications, inventory, and admin operations.
 
-The app includes an in-app **assistant UI** (assistant bar + expandable sheet) and an optional **guided workflow mode** that can help users complete multi-step flows (e.g., booking) while requiring explicit confirmation for irreversible actions (like initiating payment).
+Consultations can use **external meeting links** returned by the API. If no link is provided, the client can fall back to a **Jitsi base URL** (configured) and generate a room name from appointment metadata.
 
 Success is measured via:
-- booking completion rate + time-to-complete,
+- booking completion rate and time-to-complete,
 - crash-free sessions,
-- API error rate + latency on critical screens,
+- API latency/error rate on critical endpoints,
 - payment success rate and reconciliation correctness.
 
 ---
 
 ## Features
 
-### Core (Role-based)
-- Patient, Doctor, Pharmacist, Admin role flows with dedicated screens and navigation.
-- Appointment lifecycle: discovery → slot selection → payment handoff → confirmation → consult launch.
-- Role-aware dashboards (upcoming items, quick actions, notifications).
+### Core
+- Role-based experiences: Patient, Doctor, Pharmacist, Admin.
+- Appointment lifecycle: discovery → slot selection → payment handoff → confirmation → consult start → completion/resolution.
+- Notifications flows for patient/doctor/pharmacist.
 
 ### Patient
 - Onboarding + login + language selection.
 - Profile setup for new accounts with optional medical record upload (PDF/images) or skip.
-- Doctor discovery by specialty and doctor detail views.
-- Appointments: booking, details, start consultation, follow-up navigation.
-- Medical records: prescriptions, vitals, visit history.
-- Notifications and profile management.
-- Emergency call shortcut (if present in UI/workflow).
+- Doctor discovery and booking.
+- Prescriptions and vitals flows.
+- Pharmacy discovery and medicine request flows.
 
 ### Doctor
-- Consultations list (upcoming/completed).
-- Patient record review and summaries.
-- Prescription creation and save to patient record.
-- Consultation start flow and post-call workflow screen.
+- Dashboard + schedule.
+- Availability management and slot publishing.
+- Patient list + patient record access.
+- Appointment completion/resolution and prescription creation.
 
 ### Pharmacist
-- Stock overview, low-stock awareness (if present), and updates.
-- Add medicine/update stock/search inventory.
-- Requests processing and contact/dial actions (if present).
+- Inventory list + add item + quantity updates + stats.
+- Requests list and mark-available flow.
+- Notification list + read/dismiss.
 
 ### Admin
-- Approval workflows (e.g., doctor/pharmacist verification if implemented).
-- Governance and operational workflows tied to role onboarding.
+- User listing and detail.
+- Verification update workflows.
+- Basic operational stats.
 
 ### Integrations
-- **Razorpay** payment handoff (via `PaymentActivity`).
-- Video/audio consult via external meeting links; fallback to Jitsi using `JITSI_BASE_URL` (where configured).
-
-### Assistant
-- Assistant bar UI with expandable assistant sheet.
-- Multilingual responses aligned to app-selected language.
-- Voice input support (if enabled by permissions/config).
+- **Razorpay** payment handoff on Android (client-side checkout; secrets stay server-side).
+- **Email OTP** templates in backend (`api/templates/*`) and mailer wiring (`api/mailer.php`).
+- **Jitsi** artifacts present under `jitsi/` for self-hosting (if used).
 
 ---
 
@@ -103,51 +101,56 @@ Success is measured via:
 
 ```mermaid
 flowchart LR
-  U[User\nPatient/Doctor/Pharmacist/Admin] --> APP[Android App\nCritiCall]
+  U[Users\nPatient/Doctor/Pharmacist/Admin] --> AND[Android App\nCritiCall]
+  AND -->|HTTPS JSON| API[PHP Backend\n/api/*]
+  API --> DB[(MySQL)]
+  API --> MAIL[Email\nOTP/Reset]
+  AND --> PAY[Razorpay Checkout]
+  AND --> VC[Consultation Link\nMeet/Jitsi]
 
-  subgraph ANDROID[Android App]
-    NAV[Role Navigation\nRole modules + guarded routes]
-    UI[Role Screens\nPatient/Doctor/Pharmacist/Admin]
-    ASST[Assistant UI\nBar + Sheet]
-    ORCH[Guided Workflow Mode\nIntent → Plan → Execute → Verify]
-    NET[Network Layer\nApiConfig + clients]
-    PAY[Payments\nRazorpay activity]
-    CALLS[Calls\nExternal link + Jitsi fallback]
-    I18N[Localization\nResources + preferences]
+  subgraph Backend[PHP Backend]
+    AUTH[api/auth/*]
+    PROF[api/profile/*]
+    PAT[api/patient/*]
+    DOC[api/doctor/*]
+    PHAR[api/pharmacist/*]
+    ADM[api/admin/*]
+    NOTI[api/notifications/*]
+    CRON[api/cron/*]
+    TPL[api/templates/*]
   end
 
-  APP --> NAV
-  NAV --> UI
-  APP --> ASST
-  ASST --> ORCH
-  UI --> NET
-  PAY --> NET
-  CALLS --> NET
+  API --- AUTH
+  API --- PROF
+  API --- PAT
+  API --- DOC
+  API --- PHAR
+  API --- ADM
+  API --- NOTI
+  API --- CRON
+  API --- TPL
 
-  NET --> API[Backend API\nPHP (configured)]
-  API --> DB[(MySQL)]
-  PAY --> RZP[Razorpay]
-  CALLS --> VC[Video/Audio Provider\nMeet link or Jitsi]
-  DB --- SQL[Schema file\nsehatsethu.sql / criticall.sql]
+  VC --- JITSI[(Optional self-hosted Jitsi\njitsi/*)]
 ```
 
 ### Component Notes
-- **Role modules:** isolate domain UI/workflows per role; reduces cross-role coupling.
-- **Network layer:** central place for base URL, clients, and error handling.
-- **Payments:** booking flows route through Razorpay checkout then update appointment state.
-- **Calls:** open external consult links; build a Jitsi room URL when API does not provide a link.
-- **Assistant + workflow mode:** UI + optional orchestrator that guides multi-step flows with guardrails.
+- **Android app**: role modules + assistant UI; initiates booking, payments, and consult handoffs.
+- **PHP API**: role-based endpoint folders; shares common config/helpers and email templates.
+- **MySQL**: persistence for users, appointments, records, inventory, and notifications (schema file exists in repo).
+- **Jitsi**: optional self-hosting scaffolding under `jitsi/` (Docker-based).
+- **Mail**: OTP + reset flows via templates and mailer.
 
 ---
 
 ## Tech Stack
 
-- **Mobile:** Android (Java/Kotlin), Gradle, AndroidX / Material (as used in the project)
-- **Backend (expected):** PHP API (base URL configured in app)
-- **Database:** MySQL (schema included in repo)
-- **Payments:** Razorpay
-- **Calls:** external meet link + Jitsi fallback (`JITSI_BASE_URL`)
-- **Localization:** Android resources (`res/values-*`) + persisted language preference
+- **Mobile:** Android (Java/Kotlin), Gradle
+- **Backend:** PHP (Composer-managed dependencies)
+- **Database:** MySQL (schema file included)
+- **Payments:** Razorpay (Android checkout + backend order verification recommended)
+- **Calls:** external meet link + optional Jitsi fallback (`JITSI_BASE_URL`)
+- **Infra (optional):** Docker-based Jitsi stack under `jitsi/`
+- **Email:** PHPMailer (present under `vendor/phpmailer`)
 
 ---
 
@@ -155,31 +158,126 @@ flowchart LR
 
 ```text
 .
-├─ app/
+├─ app/                               # Android client (Gradle)
 │  ├─ src/main/
 │  │  ├─ AndroidManifest.xml
-│  │  ├─ java/com/simats/criticall/
-│  │  │  ├─ assistant/              # assistant bar + assistant sheet + workflow hooks (if present)
-│  │  │  ├─ network/                # ApiConfig, clients, request/response utils
-│  │  │  ├─ roles/
-│  │  │  │  ├─ patient/             # onboarding, booking, records, patient dashboard
-│  │  │  │  ├─ doctor/              # consultations, patient review, prescriptions
-│  │  │  │  ├─ pharmacist/          # inventory, requests
-│  │  │  │  └─ admin/               # approvals/governance
-│  │  │  └─ utils/                  # translation, preferences, helpers
-│  │  └─ res/
-│  │     ├─ layout/
-│  │     ├─ drawable/
-│  │     └─ values*/                # localized strings
+│  │  ├─ java/com/simats/criticall/   # app package (role modules, network, utils)
+│  │  └─ res/                         # layouts, drawables, localized strings
 │  └─ build.gradle
-├─ build.gradle
-├─ settings.gradle
-├─ gradle/
-├─ sehatsethu.sql                   # DB schema (repo-provided)
+├─ api/                               # PHP backend API (role-based endpoints)
+├─ jitsi/                             # optional Jitsi self-hosting (Docker artifacts)
+├─ uploads/                           # server-side upload storage (doctors/patients/pharmacists)
+├─ tools/                             # repo tools/scripts (if any)
+├─ vendor/                            # Composer deps (firebase/phpmailer/etc.)
+├─ composer.json
+├─ composer.lock
+├─ .htaccess
+├─ symptom_model_nb_v1.json           # model artifact (repo-provided)
+├─ train_symptom_nb.py                # training script (repo-provided)
+├─ sehatsethu.sql / criticall.sql     # DB schema (name may vary in repo)
 └─ README.md
 ```
 
-> **Assumption:** Package name is `com.simats.criticall` and role modules exist under `roles/`. Adjust paths to match your repo.
+> **Note:** `uploads/` is typically **runtime data** and is usually excluded in production backups/CI artifacts depending on your hosting strategy.
+
+---
+
+## Backend API Structure
+
+Below is the backend structure you shared (deduplicated and formatted for README). This is the authoritative list of backend modules/endpoints in this repo.
+
+```text
+api/
+├─ config.php
+├─ health.php
+├─ helpers.php
+├─ index.php
+├─ mailer.php
+├─ admin/
+│  ├─ stats.php
+│  ├─ update_verification.php
+│  ├─ users.php
+│  └─ user_detail.php
+├─ auth/
+│  ├─ check_verification_status.php
+│  ├─ forgot_password.php
+│  ├─ forgot_send_otp.php
+│  ├─ login.php
+│  ├─ register_create_account.php
+│  ├─ register_send_otp.php
+│  ├─ resend_email_otp.php
+│  ├─ reset_password_otp.php
+│  ├─ verify_email_otp.php
+│  └─ verify_reset_otp.php
+├─ cron/
+│  └─ appointment_reminders.php
+├─ doctor/
+│  ├─ appointments_list.php
+│  ├─ appointment_complete.php
+│  ├─ appointment_patient.php
+│  ├─ appointment_resolve.php
+│  ├─ availability_get.php
+│  ├─ availability_save.php
+│  ├─ available_slots.php
+│  ├─ home_dashboard.php
+│  ├─ notifications_dismiss.php
+│  ├─ notifications_list.php
+│  ├─ notifications_mark_read.php
+│  ├─ patients_list.php
+│  ├─ patient_record.php
+│  └─ prescription_create.php
+├─ notifications/
+│  └─ list.php
+├─ patient/
+│  ├─ appointments_list.php
+│  ├─ appointment_detail.php
+│  ├─ available_slots.php
+│  ├─ book_appointment.php
+│  ├─ consultation_summary.php
+│  ├─ dashboard.php
+│  ├─ doctors.php
+│  ├─ doctors_by_speciality.php
+│  ├─ doctor_booking_status.php
+│  ├─ doctor_detail.php
+│  ├─ doctor_slots.php
+│  ├─ medical_history_upload.php
+│  ├─ medicines_popular.php
+│  ├─ medicine_request_create.php
+│  ├─ medicine_search.php
+│  ├─ notifications_dismiss.php
+│  ├─ notifications_list.php
+│  ├─ notifications_mark_all_read.php
+│  ├─ notifications_mark_read.php
+│  ├─ pharmacy_detail.php
+│  ├─ prescriptions_list.php
+│  ├─ prescription_detail.php
+│  └─ vitals_create.php
+├─ pharmacist/
+│  ├─ dashboard.php
+│  ├─ inventory_add_item.php
+│  ├─ inventory_list.php
+│  ├─ inventory_set_quantity.php
+│  ├─ inventory_stats.php
+│  ├─ notifications_dismiss.php
+│  ├─ notifications_list.php
+│  ├─ notifications_mark_read.php
+│  ├─ requests_list.php
+│  └─ requests_mark_available.php
+├─ profile/
+│  ├─ doctor_get.php
+│  ├─ doctor_submit.php
+│  ├─ patient_get.php
+│  ├─ patient_submit.php
+│  ├─ patient_update_basic.php
+│  ├─ pharmacist_get.php
+│  ├─ pharmacist_submit.php
+│  ├─ pharmacist_update_basic.php
+│  └─ pro_status.php
+└─ templates/
+   ├─ email_otp.php
+   ├─ email_reset_otp.php
+   └─ email_verify_otp.php
+```
 
 ---
 
@@ -189,72 +287,82 @@ flowchart LR
 
 - **Android Studio** (recent stable)
 - **JDK 17** (recommended for modern Android Gradle Plugin)
-- **Android SDK** with an emulator or physical device
-- Optional: access to the backend API and Razorpay test configuration if you want end-to-end booking + payment
+- **PHP 8.x** (recommended) + web server (Apache/Nginx) or local stack (XAMPP/WAMP/Laragon)
+- **Composer** (for backend dependencies)
+- **MySQL** (for backend DB)
 
-> If your repo pins Gradle/AGP versions, follow what’s in `gradle-wrapper.properties` and top-level `build.gradle`.
+> If the repo pins specific versions via Gradle wrapper or Composer constraints, follow those.
 
-### Install
+---
+
+### Android Setup
 
 ```bash
 git clone <REPO_URL>
-cd criticall
+cd <REPO_ROOT>
 ```
 
 Open in Android Studio:
-- **File → Open…** → select the repo root
+- **File → Open…** → select repo root
 - Let **Gradle Sync** finish
+
+---
+
+### Backend Setup
+
+From repo root:
+
+```bash
+cd api
+```
+
+Install PHP dependencies (if `vendor/` is not committed or you want to refresh):
+
+```bash
+composer install
+```
+
+Run backend locally using PHP built-in server (for quick dev only):
+
+```bash
+php -S 127.0.0.1:8080 -t .
+```
+
+Health check (path depends on server routing; `api/health.php` exists):
+
+```bash
+curl http://127.0.0.1:8080/health.php
+```
+
+> **Assumption:** `health.php` is directly reachable at the server docroot. If you host the backend at `/api`, adjust to `/api/health.php`.
+
+---
 
 ### Environment Variables
 
-If the repo contains an `.env.example`, mirror it here. Otherwise, these keys are inferred from typical usage in this project.
+This repo uses PHP config files rather than a strict `.env` contract. Use the table below as a practical checklist, then map values into `api/config.php` (and any mailer config) based on your hosting setup.
 
-| Variable | Required | Used by | Example | Notes |
-|---|:---:|---|---|---|
-| `API_BASE_URL` | ✅ | Network (`ApiConfig.kt`) | `https://api.example.com/` | Base URL for the PHP backend. |
-| `JITSI_BASE_URL` | ⛔ | Calls fallback | `https://meet.jit.si/` | Used only if API doesn’t return a meeting link. |
-| `RAZORPAY_KEY_ID` | ✅* | Payments | `rzp_test_...` | Publishable key ID for Razorpay checkout. |
-| `RAZORPAY_KEY_SECRET` | ✅* (server) | Backend | *(server-side)* | **Do not** put secrets in the Android app. |
+| Key | Layer | Required | Example | Where to set |
+|---|---|:---:|---|---|
+| `API_BASE_URL` | Android | ✅ | `https://your-domain.com/api/` | Android `ApiConfig.kt` or `BuildConfig` |
+| `DB_HOST` | Backend | ✅ | `localhost` | `api/config.php` |
+| `DB_NAME` | Backend | ✅ | `criticall` | `api/config.php` |
+| `DB_USER` | Backend | ✅ | `root` | `api/config.php` |
+| `DB_PASS` | Backend | ✅ | `password` | `api/config.php` |
+| `MAIL_HOST` | Backend | ⛔* | `smtp.gmail.com` | `api/mailer.php` |
+| `MAIL_USER` | Backend | ⛔* | `no-reply@...` | `api/mailer.php` |
+| `MAIL_PASS` | Backend | ⛔* | `app-password` | `api/mailer.php` |
+| `JITSI_BASE_URL` | Android | ⛔ | `https://meet.jit.si/` | Android `BuildConfig` |
+| `RAZORPAY_KEY_ID` | Android | ✅* | `rzp_test_...` | Android `BuildConfig` |
+| `RAZORPAY_KEY_SECRET` | Backend | ✅* | *(server-side)* | backend order creation/verification |
 
-\* Required only if you run booking flows that trigger payments.
-
-#### Recommended local setup (no secrets committed)
-
-Use `local.properties` (not committed) and map to `BuildConfig`:
-
-`local.properties`:
-```properties
-API_BASE_URL=https://api.example.com/
-JITSI_BASE_URL=https://meet.jit.si/
-RAZORPAY_KEY_ID=rzp_test_xxxxx
-```
-
-`app/build.gradle` (example):
-```gradle
-android {
-  defaultConfig {
-    def apiBaseUrl = project.properties["API_BASE_URL"] ?: ""
-    def jitsiBaseUrl = project.properties["JITSI_BASE_URL"] ?: ""
-    def razorpayKeyId = project.properties["RAZORPAY_KEY_ID"] ?: ""
-
-    buildConfigField "String", "API_BASE_URL", "\"${apiBaseUrl}\""
-    buildConfigField "String", "JITSI_BASE_URL", "\"${jitsiBaseUrl}\""
-    buildConfigField "String", "RAZORPAY_KEY_ID", "\"${razorpayKeyId}\""
-  }
-}
-```
-
-Then reference `BuildConfig.API_BASE_URL` / `BuildConfig.JITSI_BASE_URL` / `BuildConfig.RAZORPAY_KEY_ID` from code.
+\* Required only if you use email OTP flows and/or payments end-to-end.
 
 ---
 
 ### Run / Build / Test
 
-#### Run (Android Studio)
-- Select a device/emulator
-- Run the **app** configuration
-
-#### Build (CLI)
+#### Android (CLI)
 
 Debug APK:
 ```bash
@@ -266,13 +374,9 @@ Install to a connected device:
 ./gradlew :app:installDebug
 ```
 
-Release APK:
+Release:
 ```bash
 ./gradlew :app:assembleRelease
-```
-
-Release AAB (recommended for Play Store):
-```bash
 ./gradlew :app:bundleRelease
 ```
 
@@ -281,116 +385,124 @@ Tests (if present):
 ./gradlew test
 ```
 
-Instrumentation tests (if configured):
+#### Backend (local)
+
+Composer install:
 ```bash
-./gradlew connectedAndroidTest
+composer install
 ```
 
-> Tip: run `./gradlew tasks` to see exactly what this repo exposes.
+PHP built-in server:
+```bash
+php -S 127.0.0.1:8080 -t api
+```
+
+Smoke test:
+```bash
+curl http://127.0.0.1:8080/health.php
+```
 
 ---
 
 ## Configuration
 
-Common configuration touchpoints:
+- **Android**
+  - `app/build.gradle`: dependencies, build types, BuildConfig fields, signing.
+  - `AndroidManifest.xml`: permissions and activity declarations.
+  - `res/values*/`: translations and themes.
 
-- `app/build.gradle`
-  - dependencies, build types (debug/release), BuildConfig fields, signing.
-- `gradle/wrapper/gradle-wrapper.properties`
-  - Gradle version pinning.
-- `app/src/main/AndroidManifest.xml`
-  - permissions (internet, audio, etc.), activity declarations, deep links.
-- `app/src/main/res/values*/`
-  - localized strings and theme resources.
+- **Backend**
+  - `api/config.php`: database and shared config (repo file).
+  - `api/helpers.php`: common helper functions (repo file).
+  - `api/mailer.php`: email sending (repo file) with templates in `api/templates/`.
+  - `.htaccess`: routing/security rules for Apache hosting.
 
-Backend integration:
-- Base URL configured in `app/src/main/java/.../network/ApiConfig.kt` (or equivalent).
-- Schema file at repo root: `sehatsethu.sql` (and/or `criticall.sql`).
+- **Jitsi (optional)**
+  - `jitsi/docker-jitsi-meet` and `jitsi-meet-cfg` indicate Docker-based self-hosting scaffolding.
 
 ---
 
 ## Deployment
 
-### Android release artifacts
-
+### Android
+- Build an **AAB** for Play Store:
 ```bash
-./gradlew :app:assembleRelease
 ./gradlew :app:bundleRelease
 ```
+- Keep signing keys out of VCS and use CI secrets or local secure storage.
 
-### Environment separation
+### Backend (PHP)
+- Deploy the repo to an Apache/Nginx PHP host (shared hosting or VPS).
+- Ensure:
+  - PHP 8.x
+  - Composer dependencies installed
+  - MySQL reachable
+  - `uploads/` writable by the web server user (if file uploads are used)
+  - `.htaccess` enabled (Apache) or equivalent Nginx rules configured
 
-- Use different API endpoints per environment (dev/staging/prod) via BuildConfig fields.
-- Keep secrets server-side:
-  - Razorpay secret key must be used only on the backend for order creation and signature verification.
-- Never commit:
-  - keystores, signing passwords, production keys, `.jks` files, `local.properties`.
+**Database**
+- Import schema:
+```bash
+mysql -u <user> -p <database> < criticall.sql
+```
+> Schema filename may be `sehatsethu.sql` or `criticall.sql` depending on your repo.
+
+### Jitsi (optional)
+- If you self-host Jitsi, use the docker artifacts under `jitsi/`.
+- Keep Jitsi deployment isolated from API secrets (separate env files and access controls).
 
 ---
 
 ## Monitoring & Logging
 
-- Local debugging:
-  - Use **Logcat** filtered by `com.simats.criticall`.
-- Production recommendations (only if present / enabled in repo):
-  - crash reporting and performance telemetry
-  - structured logging with PII redaction
-  - release build gating (telemetry enabled in release, optional in debug)
+- **Android:** Logcat for local debugging; consider adding crash reporting only if configured in repo.
+- **Backend:** PHP error logs via your web server; log request IDs for support/debug (recommended).
+- **Cron:** `api/cron/appointment_reminders.php` should be scheduled via system cron or hosting scheduler.
 
-> If this repo includes telemetry SDK config, document the exact setup here (service name, env, where dashboards live).
+> If you add telemetry later (OpenTelemetry/Firebase/etc.), document the exact service, endpoints, and dashboards here.
 
 ---
 
 ## Security Notes
 
-- **RBAC:** role enforcement must be server-side. Client-side checks are UX, not security.
-- **Secrets:** do not store any secret keys in the Android app (especially payment secrets).
-- **Transport:** use HTTPS for all API calls.
-- **PII:** avoid logging patient identifiers, medical details, or tokens.
-- **File uploads:** validate file type/size on backend; store with access controls.
+- **Never commit secrets:** DB passwords, SMTP passwords, Razorpay secrets, keystores.
+- **Payments:** keep Razorpay signature verification server-side; Android uses publishable key only.
+- **RBAC:** client-side role gating improves UX; enforce authorization on backend endpoints.
+- **Uploads:** validate file type/size and store outside webroot when possible; restrict direct listing.
+- **Rate limiting:** OTP and auth endpoints should be rate-limited (server / WAF).
 
 ---
 
 ## Troubleshooting
 
-1) **Gradle sync fails (JDK mismatch)**
-- In Android Studio: Settings → Build Tools → Gradle → set **Gradle JDK = 17**.
-- Verify:
+1) **Backend returns 500**
+- Check PHP error logs.
+- Verify DB credentials in `api/config.php`.
+- Run:
 ```bash
-./gradlew -version
+composer install
 ```
 
-2) **Network calls failing / 404 / timeout**
-- Confirm `API_BASE_URL` is set and reachable:
+2) **CORS / base URL mismatch**
+- Ensure Android `API_BASE_URL` matches deployed API path (`/api/`).
+- Confirm `api/health.php` is reachable.
+
+3) **OTP emails not sent**
+- Verify SMTP config in `api/mailer.php`.
+- Check firewall/hosting restrictions on outbound SMTP.
+
+4) **Uploads failing**
+- Ensure `uploads/` exists and is writable by the web server user.
+- Confirm file size limits in `php.ini` (`upload_max_filesize`, `post_max_size`).
+
+5) **Cron not running**
+- Schedule `api/cron/appointment_reminders.php` in server cron:
 ```bash
-curl -I https://api.example.com/
+php /path/to/api/cron/appointment_reminders.php
 ```
 
-3) **Cleartext HTTP blocked**
-- Use HTTPS. For local dev only, configure a Network Security Config and keep it out of release.
-
-4) **Payment flow errors**
-- Ensure `RAZORPAY_KEY_ID` is configured.
-- Ensure backend creates Razorpay orders and verifies signatures (server-side).
-- Update WebView/Play Services on emulator/device.
-
-5) **Consult link not opening**
-- Validate the meet link returned by the API.
-- If using fallback, ensure `JITSI_BASE_URL` is set and room names are URL-safe.
-
-6) **Build succeeds, install fails**
-```bash
-adb devices
-adb uninstall com.simats.criticall
-./gradlew :app:installDebug
-```
-
-7) **Manifest merge conflicts**
-```bash
-./gradlew :app:processDebugManifest --stacktrace
-```
-
-8) **Missing resources / duplicate classes**
+6) **Android build issues**
+- Ensure Android Studio uses JDK 17.
 - Clean + rebuild:
 ```bash
 ./gradlew clean
@@ -401,25 +513,26 @@ adb uninstall com.simats.criticall
 
 ## Contributing
 
-1) Fork the repo and create a branch:
+1) Fork and branch:
 ```bash
 git checkout -b feat/<short-name>
 ```
 
 2) Keep PRs small and reviewable.
 - Include screenshots for UI changes.
-- Describe how to validate the change.
+- Include endpoint notes for backend changes.
 
-3) Run checks locally:
+3) Run checks:
 ```bash
 ./gradlew test
 ./gradlew :app:assembleDebug
 ```
 
-Code style guidelines:
-- Keep role logic isolated under `roles/`.
-- Centralize API calls in the network layer.
-- Avoid hard-coded secrets and environment URLs.
+Backend sanity check:
+```bash
+composer install
+php -S 127.0.0.1:8080 -t api
+```
 
 ---
 
