@@ -11,6 +11,7 @@
     <img src="https://img.shields.io/badge/Database-MySQL-0b74de" alt="Database" />
     <img src="https://img.shields.io/badge/Payments-Razorpay-2d2d2d" alt="Payments" />
     <img src="https://img.shields.io/badge/Status-Active-0aa06e" alt="Status" />
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-1F6FEB" alt="License" /></a>
   </p>
 
   <p><strong>Built by Shashank Preetham Pendyala</strong></p>
@@ -300,4 +301,4 @@ Ensure `uploads/` is writable if enabled.
 
 ## License
 
-See `LICENSE`.
+MIT License. See [LICENSE](LICENSE).
